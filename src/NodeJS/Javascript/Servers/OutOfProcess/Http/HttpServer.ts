@@ -1,11 +1,12 @@
 // The typings for module are incomplete and can't be augmented, so import as any.
 var Module = require('module');
-import * as path from 'path';
-import * as http from 'http';
-import * as stream from 'stream';
-import { AddressInfo, Socket } from 'net';
-import InvocationRequest from '../../../InvocationData/InvocationRequest';
-import ModuleSourceType from '../../../InvocationData/ModuleSourceType';
+import * as http from "http";
+import { AddressInfo, Socket } from "net";
+import * as path from "path";
+import * as stream from "stream";
+
+import InvocationRequest from "../../../InvocationData/InvocationRequest";
+import ModuleSourceType from "../../../InvocationData/ModuleSourceType";
 
 // Parse arguments
 const args: { [key: string]: string } = parseArgs(process.argv);
@@ -28,12 +29,18 @@ const server = http.createServer(serverOnRequestListener);
 
 // In Node.js v13+ this is the default, however for earlier versions it is 120 seconds.
 server.setTimeout(0);
-server.keepAliveTimeout = 0;
-// This is fixed so that 0 disables the timeout in node 12.17+ -- for earlier versions 0 times out immediately, so set it to 10 years
-server.headersTimeout = 10 * 365 * 24 * 60 * 60 * 1000;
 
-// Log timed out connections for debugging
-server.on('timeout', serverOnTimeout);
+// By default, a socket is destroyed if it receives no incoming data for 5 seconds: https://nodejs.org/api/http.html#http_server_keepalivetimeout.
+// This is good practice when making external requests because DNS records may change: https://github.com/dotnet/runtime/issues/18348.
+// Since we're using the HTTP protocol on a local machine, it's safe and more efficient to keep sockets alive indefinitely.
+server.keepAliveTimeout = 0;
+
+// By default, a socket is destroyed if its incoming headers take longer than 60 seconds: https://nodejs.org/api/http.html#http_server_headerstimeout.
+// In early versions of Node.js, even if setTimeout() was specified with a non-zero value, the server would wait indefinitely for headers.
+// This timeout was added to deal with that issue. We specify setTimeout(0), so this timeout is of no use to us.
+//
+// Note that while 0 disables this timeout in node 12.17+, in earlier versions it causes requests to time out immediately, so set to max positive int 32.
+server.headersTimeout = 2147483647;
 
 // Send client error details to client for debugging
 server.on('clientError', serverOnClientError);
@@ -95,7 +102,7 @@ function serverOnRequestListener(req, res) {
                         if (invocationRequest.newCacheIdentifier != null) {
                             // Notes on module caching:
                             // When a module is required using require, it is cached in Module._cache using its absolute file path as its key.
-                            // When Module._load tries to load the same module again, it first resolves the absolute file path of the module, then it 
+                            // When Module._load tries to load the same module again, it first resolves the absolute file path of the module, then it
                             // checks if the module exists in the cache. Custom keys for in memory modules cause an error at the file resolution step.
                             // To make modules with custom keys requirable by other modules, require must be monkey patched.
                             Module._cache[invocationRequest.newCacheIdentifier] = module;
@@ -164,7 +171,7 @@ function serverOnRequestListener(req, res) {
                     }
                 }
 
-                // Invoke function 
+                // Invoke function
                 if (functionToInvoke.constructor.name === "AsyncFunction") {
                     callback(null, await functionToInvoke.apply(null, invocationRequest.args));
                 } else {

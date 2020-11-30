@@ -986,6 +986,23 @@ module.exports = (callback) => {
             }
         }
 
+
+        [Fact]
+        public async void ConnectionDoesNotTimeOut()
+        {
+            // Arrange
+            var services = new ServiceCollection();
+            services.Configure<OutOfProcessNodeJSServiceOptions>(options =>
+            {
+                options.NumRetries = 0;
+                options.NumConnectionRetries = 0;
+            });
+            HttpNodeJSService testSubject = CreateHttpNodeJSService(services: services);
+            await testSubject.InvokeFromStringAsync("module.exports = callback => callback();").ConfigureAwait(false); // Starts the Node.js process
+            await Task.Delay(6000);
+            await testSubject.InvokeFromStringAsync("module.exports = callback => callback();").ConfigureAwait(false);
+        }
+
         [Fact]
         public async void AllInvokeMethodsThatReturnAValue_HandleStreamReturnType()
         {

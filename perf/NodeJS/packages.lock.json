@@ -1215,7 +1215,7 @@
           "System.Xml.XPath": "4.3.0"
         }
       },
-      "jering.javascript.nodejs": {
+      "Vendeq.Javascript.NodeJS": {
         "type": "Project",
         "dependencies": {
           "Jering.IocServices.System.Net.Http": "0.4.0",
